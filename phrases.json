@@ -1,0 +1,425 @@
+[
+  {
+    "id": "starter-1",
+    "phrase": "Você pode me ajudar?",
+    "translation": "Можете мне помочь?",
+    "categories": ["В любой ситуации", "Просьбы"],
+    "prompt": "Попроси прохожего помочь тебе.",
+    "chunk": "Você pode me…?",
+    "ending": "ajudar?"
+  },
+  {
+    "id": "starter-2",
+    "phrase": "Pode repetir, por favor?",
+    "translation": "Можете повторить, пожалуйста?",
+    "categories": ["В любой ситуации", "Уточнения"],
+    "prompt": "Попроси собеседника повторить сказанное."
+  },
+  {
+    "id": "starter-3",
+    "phrase": "Você pode me trazer a conta?",
+    "translation": "Можете принести мне счёт?",
+    "categories": ["Кафе", "Просьбы"],
+    "prompt": "Ты в кафе. Попроси счёт.",
+    "chunk": "Você pode me…?",
+    "ending": "trazer a conta?"
+  },
+  {
+    "id": "starter-4",
+    "phrase": "Queria um café, por favor.",
+    "translation": "Я бы хотел(а) кофе, пожалуйста.",
+    "categories": ["Кафе", "Просьбы"],
+    "prompt": "Закажи кофе у стойки."
+  },
+  {
+    "id": "starter-5",
+    "phrase": "Só isso, por favor.",
+    "translation": "Это всё, пожалуйста.",
+    "categories": ["Кафе", "Ответы"],
+    "prompt": "Скажи, что это всё.",
+    "question": "Mais alguma coisa?"
+  },
+  {
+    "id": "starter-6",
+    "phrase": "Você pode me mostrar esse aqui?",
+    "translation": "Можете показать мне вот этот?",
+    "categories": ["Магазин", "Просьбы"],
+    "prompt": "Попроси продавца показать товар, на который ты указываешь.",
+    "chunk": "Você pode me…?",
+    "ending": "mostrar esse aqui?"
+  },
+  {
+    "id": "starter-7",
+    "phrase": "Tem em outro tamanho?",
+    "translation": "Есть в другом размере?",
+    "categories": ["Магазин", "Уточнения"],
+    "prompt": "Спроси, есть ли другой размер."
+  },
+  {
+    "id": "starter-8",
+    "phrase": "Você é de onde?",
+    "translation": "Ты откуда?",
+    "categories": ["Знакомство", "Вопросы"],
+    "prompt": "Спроси нового знакомого, откуда он."
+  },
+  {
+    "id": "starter-9",
+    "phrase": "Sou da Rússia.",
+    "translation": "Я из России.",
+    "categories": ["Знакомство", "Ответы"],
+    "prompt": "Скажи, что ты из России.",
+    "question": "Você é de onde?"
+  },
+  {
+    "id": "starter-10",
+    "phrase": "Tem quarto disponível pra hoje?",
+    "translation": "Есть свободный номер на сегодня?",
+    "categories": ["Отель", "Вопросы"],
+    "prompt": "Спроси, есть ли свободный номер на сегодня."
+  },
+  {
+    "id": "starter-11",
+    "phrase": "Oi, tudo bem?",
+    "translation": "Привет, как дела?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Поздоровайся и спроси, как дела."
+  },
+  {
+    "id": "starter-12",
+    "phrase": "Tudo bem, e você?",
+    "translation": "Всё хорошо, а у тебя?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Скажи, что у тебя всё хорошо, и спроси в ответ.",
+    "question": "Oi, tudo bem?"
+  },
+  {
+    "id": "starter-13",
+    "phrase": "Bom dia!",
+    "translation": "Доброе утро!",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-14",
+    "phrase": "Boa tarde!",
+    "translation": "Добрый день!",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-15",
+    "phrase": "Boa noite!",
+    "translation": "Добрый вечер! / Спокойной ночи!",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-16",
+    "phrase": "Até logo!",
+    "translation": "До встречи!",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-17",
+    "phrase": "Até amanhã!",
+    "translation": "До завтра!",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-18",
+    "phrase": "Prazer em conhecer você.",
+    "translation": "Приятно познакомиться.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-19",
+    "phrase": "Com licença.",
+    "translation": "Извините. / Разрешите пройти.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-20",
+    "phrase": "Desculpa.",
+    "translation": "Извини. / Извините.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-21",
+    "phrase": "Por favor.",
+    "translation": "Пожалуйста.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-22",
+    "phrase": "Muito obrigado!",
+    "translation": "Большое спасибо! (говорит мужчина)",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-23",
+    "phrase": "Muito obrigada!",
+    "translation": "Большое спасибо! (говорит женщина)",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-24",
+    "phrase": "De nada.",
+    "translation": "Не за что.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Ответь, что благодарить не за что.",
+    "question": "Muito obrigado!"
+  },
+  {
+    "id": "starter-25",
+    "phrase": "Sem problema.",
+    "translation": "Без проблем.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-26",
+    "phrase": "Um momento, por favor.",
+    "translation": "Одну минуту, пожалуйста.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Попроси собеседника подождать минуту."
+  },
+  {
+    "id": "starter-27",
+    "phrase": "Você pode me explicar isso?",
+    "translation": "Можете мне это объяснить?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Попроси объяснить то, что осталось непонятным.",
+    "chunk": "Você pode me…?",
+    "ending": "explicar isso?"
+  },
+  {
+    "id": "starter-28",
+    "phrase": "Você pode me dar um exemplo?",
+    "translation": "Можете привести мне пример?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Попроси привести пример.",
+    "chunk": "Você pode me…?",
+    "ending": "dar um exemplo?"
+  },
+  {
+    "id": "starter-29",
+    "phrase": "Você pode me mostrar como funciona?",
+    "translation": "Можете показать мне, как это работает?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Попроси показать, как что-то работает.",
+    "chunk": "Você pode me…?",
+    "ending": "mostrar como funciona?"
+  },
+  {
+    "id": "starter-30",
+    "phrase": "Pode falar mais devagar, por favor?",
+    "translation": "Можете говорить помедленнее, пожалуйста?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Попроси собеседника говорить помедленнее."
+  },
+  {
+    "id": "starter-31",
+    "phrase": "Não entendi.",
+    "translation": "Я не понял(а).",
+    "categories": ["В любой ситуации"],
+    "prompt": "Скажи, что ты не понял(а) объяснение.",
+    "question": "Você entendeu?"
+  },
+  {
+    "id": "starter-32",
+    "phrase": "Entendi.",
+    "translation": "Понял(а).",
+    "categories": ["В любой ситуации"],
+    "prompt": "Скажи, что ты понял(а) объяснение.",
+    "question": "Você entendeu?"
+  },
+  {
+    "id": "starter-33",
+    "phrase": "O que isso quer dizer?",
+    "translation": "Что это значит?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, что означает выражение, которое ты только что услышал(а)."
+  },
+  {
+    "id": "starter-34",
+    "phrase": "Como se diz isso em português?",
+    "translation": "Как это сказать по-португальски?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, как это сказать по-португальски."
+  },
+  {
+    "id": "starter-35",
+    "phrase": "Como se escreve?",
+    "translation": "Как это пишется?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, как пишется слово, которое ты услышал(а)."
+  },
+  {
+    "id": "starter-36",
+    "phrase": "Você quer dizer que é hoje?",
+    "translation": "Ты имеешь в виду, что это сегодня?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Уточни, имеет ли собеседник в виду, что это сегодня."
+  },
+  {
+    "id": "starter-37",
+    "phrase": "Falo um pouco de português.",
+    "translation": "Я немного говорю по-португальски.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Скажи, что немного говоришь по-португальски.",
+    "question": "Você fala português?"
+  },
+  {
+    "id": "starter-38",
+    "phrase": "Você fala inglês?",
+    "translation": "Вы говорите по-английски?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, говорит ли собеседник по-английски."
+  },
+  {
+    "id": "starter-39",
+    "phrase": "Tô aprendendo português.",
+    "translation": "Я учу португальский. (разг.)",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-40",
+    "phrase": "Posso fazer uma pergunta?",
+    "translation": "Можно задать вопрос?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, можно ли задать вопрос."
+  },
+  {
+    "id": "starter-41",
+    "phrase": "Posso entrar?",
+    "translation": "Можно войти?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, можно ли войти."
+  },
+  {
+    "id": "starter-42",
+    "phrase": "Tudo bem se eu sentar aqui?",
+    "translation": "Ничего, если я сяду здесь?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, можно ли сесть здесь."
+  },
+  {
+    "id": "starter-43",
+    "phrase": "Onde fica o banheiro?",
+    "translation": "Где туалет?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, где находится туалет."
+  },
+  {
+    "id": "starter-44",
+    "phrase": "O que aconteceu?",
+    "translation": "Что случилось?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, что случилось."
+  },
+  {
+    "id": "starter-45",
+    "phrase": "O que você acha?",
+    "translation": "Что ты думаешь?",
+    "categories": ["В любой ситуации"],
+    "prompt": "Спроси, что собеседник думает о предложении."
+  },
+  {
+    "id": "starter-46",
+    "phrase": "Eu acho que dá.",
+    "translation": "Думаю, получится.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Скажи, что, по-твоему, получится.",
+    "question": "Você acha que vai dar?"
+  },
+  {
+    "id": "starter-47",
+    "phrase": "Eu acho que sim.",
+    "translation": "Думаю, да.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-48",
+    "phrase": "Acho que não.",
+    "translation": "Думаю, нет.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-49",
+    "phrase": "Ainda não sei.",
+    "translation": "Я пока не знаю.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Скажи, что ещё не знаешь.",
+    "question": "Você vem amanhã?"
+  },
+  {
+    "id": "starter-50",
+    "phrase": "Não sei se vou conseguir.",
+    "translation": "Не знаю, получится ли у меня.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-51",
+    "phrase": "Depende.",
+    "translation": "Смотря как. / Зависит от обстоятельств.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-52",
+    "phrase": "Pode ser.",
+    "translation": "Подойдёт. / Давай.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Скажи, что предложенное время тебе подходит.",
+    "question": "Pode ser às sete?"
+  },
+  {
+    "id": "starter-53",
+    "phrase": "Tá bom.",
+    "translation": "Хорошо. / Ладно. (разг.)",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-54",
+    "phrase": "Combinado!",
+    "translation": "Договорились!",
+    "categories": ["В любой ситуации"],
+    "prompt": "Подтверди договорённость.",
+    "question": "A gente se encontra amanhã, então?"
+  },
+  {
+    "id": "starter-55",
+    "phrase": "Que bom!",
+    "translation": "Как здорово!",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-56",
+    "phrase": "Sério?",
+    "translation": "Серьёзно? / Правда?",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-57",
+    "phrase": "Não precisa.",
+    "translation": "Не нужно.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Вежливо скажи, что помощь не нужна.",
+    "question": "Quer ajuda?"
+  },
+  {
+    "id": "starter-58",
+    "phrase": "Sim, por favor.",
+    "translation": "Да, пожалуйста.",
+    "categories": ["В любой ситуации"],
+    "prompt": "Согласись, когда предлагают помочь.",
+    "question": "Quer ajuda?"
+  },
+  {
+    "id": "starter-59",
+    "phrase": "Agora não, por favor.",
+    "translation": "Только не сейчас, пожалуйста.",
+    "categories": ["В любой ситуации"]
+  },
+  {
+    "id": "starter-60",
+    "phrase": "Eu preciso ir.",
+    "translation": "Мне пора идти.",
+    "categories": ["В любой ситуации"]
+  }
+]

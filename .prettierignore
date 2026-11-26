@@ -1,0 +1,7 @@
+.git/
+.next/
+node_modules/
+next-env.d.ts
+out/
+coverage/
+package-lock.json

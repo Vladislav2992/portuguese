@@ -1,0 +1,14 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.env*
+!.env.example
+out/
+coverage/
+.vercel/
+*.log
+*.pem
+.DS_Store
+Thumbs.db
+public/audio/
