@@ -1,5 +1,4 @@
-export async function readAction(request: Request) {
-  const limit = 256000
+export async function readAction(request: Request, limit = 256000) {
   const reader = request.body?.getReader()
   if (!reader) return null
   const decoder = new TextDecoder('utf-8', { fatal: true })

@@ -17,6 +17,7 @@ import {
 import { scheduleLearned } from './learning'
 import { mixedBatchSize, mixedDeckLimit, type Collection } from './deck-types'
 import { useDeckPage } from './use-deck-page'
+import { useCardAudio } from './use-card-audio'
 import type { Card, Mode, Review, Reviews, View } from './types'
 import { ArrowIcon, BookmarkIcon } from './icons'
 
@@ -61,7 +62,7 @@ export default function Trainer() {
   })
   const initData = useRef('')
   const writing = useRef(false)
-  const activeAudio = useRef<HTMLAudioElement | null>(null)
+  const playAudio = useCardAudio(setStatus)
   useEffect(() => {
     setNow(Date.now())
     const timer = window.setInterval(() => setNow(Date.now()), 60_000)
@@ -115,7 +116,6 @@ export default function Trainer() {
       })
     return () => {
       active = false
-      activeAudio.current?.pause()
     }
   }, [telegramLaunch])
 
@@ -195,49 +195,10 @@ export default function Trainer() {
     }
   }
   function play(text: string) {
-    setStatus('')
-    activeAudio.current?.pause()
-    activeAudio.current = null
-    window.speechSynthesis?.cancel()
-
-    const recording = batch.items.find(
+    const item = batch.items.find(
       ({ card }) => card.phrase === text || card.question === text,
     )
-    const filename =
-      recording?.card.phrase === text
-        ? recording.audio
-        : recording?.questionAudio
-    if (filename && /^[a-f0-9]{16}\.mp3$/.test(filename)) {
-      const audio = new Audio('/audio/' + filename)
-      activeAudio.current = audio
-      void audio.play().catch(() => {
-        if (activeAudio.current === audio) {
-          setStatus('Не удалось воспроизвести аудио. Попробуй ещё раз.')
-        }
-      })
-      return
-    }
-
-    if (!('speechSynthesis' in window)) {
-      setStatus('Озвучка недоступна в этом браузере.')
-      return
-    }
-    const speech = new SpeechSynthesisUtterance(text)
-    const synth = window.speechSynthesis
-    const voice = synth
-      .getVoices()
-      .find((item) => item.lang.toLowerCase().replace('_', '-') === 'pt-br')
-    if (voice) speech.voice = voice
-    speech.lang = 'pt-BR'
-    speech.rate = 0.9
-    speech.onerror = (event) => {
-      if (!['canceled', 'interrupted'].includes(event.error)) {
-        setStatus(
-          'Озвучка не запустилась. Проверь голос для португальского (Бразилия) в системе.',
-        )
-      }
-    }
-    synth.speak(speech)
+    void playAudio(text, item, profile === 'remote' ? initData.current : null)
   }
   function changeCategory(value: string) {
     setCategory(value)

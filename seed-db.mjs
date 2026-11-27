@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { neon } from '@neondatabase/serverless'
+import { deckSchema } from './deck-schema.mjs'
 
 const url = process.env.DATABASE_URL
 
@@ -15,26 +16,7 @@ if (!url) {
     const categories = [...new Set(cards.flatMap((card) => card.categories))]
 
     await sql.transaction([
-      sql`CREATE TABLE IF NOT EXISTS starter_cards (
-        id text PRIMARY KEY,
-        position integer NOT NULL CHECK (position >= 0),
-        phrase text NOT NULL,
-        translation text NOT NULL,
-        prompt text,
-        question text,
-        chunk text,
-        ending text
-      )`,
-      sql`CREATE TABLE IF NOT EXISTS categories (
-        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        name text NOT NULL UNIQUE
-      )`,
-      sql`CREATE TABLE IF NOT EXISTS starter_card_categories (
-        card_id text NOT NULL REFERENCES starter_cards(id) ON DELETE CASCADE,
-        category_id integer NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-        position integer NOT NULL CHECK (position >= 0),
-        PRIMARY KEY (card_id, category_id)
-      )`,
+      ...deckSchema(sql),
       ...categories.map(
         (name) => sql`INSERT INTO categories (name) VALUES (${name})
           ON CONFLICT (name) DO NOTHING`,

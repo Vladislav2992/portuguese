@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless'
+import { deckSchema } from './deck-schema.mjs'
 
 try {
   if (!process.env.DATABASE_URL)
@@ -23,9 +24,16 @@ try {
         CHECK (learning_state IN ('active', 'learned', 'hidden')),
       ADD COLUMN IF NOT EXISTS review_stage smallint NOT NULL DEFAULT 0
         CHECK (review_stage BETWEEN 0 AND 3)`,
+    ...deckSchema(sql),
+    sql`CREATE TABLE IF NOT EXISTS speech_audio (
+      owner_id text NOT NULL,
+      cache_key text NOT NULL,
+      audio bytea NOT NULL CHECK (octet_length(audio) BETWEEN 1 AND 1048576),
+      PRIMARY KEY (owner_id, cache_key)
+    )`,
   ])
-  console.log('Таблицы личного словаря и прогресса готовы.')
+  console.log('Миграции профиля и общей колоды применены.')
 } catch {
-  console.error('Не удалось применить миграцию личного профиля.')
+  console.error('Не удалось применить миграции.')
   process.exitCode = 1
 }

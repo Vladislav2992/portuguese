@@ -1,17 +1,12 @@
 import Image from 'next/image'
 import type { View, NavTab } from '../types'
-import { CardIcon, DictionaryIcon, PhrasesIcon, TargetIcon } from '../icons'
+import { CardIcon, DictionaryIcon, TargetIcon } from '../icons'
 
 const navTabs: NavTab[] = [
   {
     id: 'cards',
     label: 'Карточки',
     icon: <CardIcon />,
-  },
-  {
-    id: 'build',
-    label: 'Фразы',
-    icon: <PhrasesIcon />,
   },
   {
     id: 'practice',

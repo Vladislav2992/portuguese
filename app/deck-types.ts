@@ -1,7 +1,7 @@
 import type { Card, Mode, Review } from './types'
 
-export const mixedBatchSize = 3
-export const mixedDeckLimit = 30
+export const mixedBatchSize = 30
+export const mixedDeckLimit = 300
 
 export type Collection =
   'mixed' | 'archive' | 'review' | 'practice' | 'builder' | 'dictionary'
