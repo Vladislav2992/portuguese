@@ -7,11 +7,13 @@ export function PracticeCard({
   mode,
   play,
   rate,
+  disabled,
 }: {
   card: Card
   mode: Mode
   play: (phrase: string) => void
   rate: (delay: number) => void
+  disabled: boolean
 }) {
   const [hint, setHint] = useState(false)
   const [example, setExample] = useState(false)
@@ -20,7 +22,9 @@ export function PracticeCard({
     <article className='panel practice'>
       <h2>{mode === 'recall' ? card.translation : card.prompt}</h2>
       {mode === 'reply' && question && (
-        <button onClick={() => play(question)}><SoundIcon /></button>
+        <button onClick={() => play(question)}>
+          <SoundIcon />
+        </button>
       )}
       <p>Ответь вслух, затем сверься с примером.</p>
       <div className='actions'>
@@ -42,11 +46,19 @@ export function PracticeCard({
         <div className='example'>
           <strong lang='pt-BR'>{card.phrase}</strong>
           <p>{card.translation}</p>
-          <button onClick={() => play(card.phrase)}><SoundIcon /></button>
+          <button onClick={() => play(card.phrase)}>
+            <SoundIcon />
+          </button>
           <div className='actions ratings'>
-            <button onClick={() => rate(86400000)}>Вспомнил сам</button>
-            <button onClick={() => rate(3600000)}>С подсказкой</button>
-            <button onClick={() => rate(0)}>Повторить</button>
+            <button disabled={disabled} onClick={() => rate(86400000)}>
+              Вспомнил сам
+            </button>
+            <button disabled={disabled} onClick={() => rate(3600000)}>
+              С подсказкой
+            </button>
+            <button disabled={disabled} onClick={() => rate(0)}>
+              Повторить
+            </button>
           </div>
         </div>
       )}

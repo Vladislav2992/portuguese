@@ -2,15 +2,20 @@ import type { Card } from '../types'
 
 export function CategoryFilter({
   cards,
+  extraCategories = [],
   value,
   change,
 }: {
   cards: Card[]
+  extraCategories?: string[]
   value: string
   change: (value: string) => void
 }) {
   const categories = [
-    ...new Set(cards.flatMap((card) => card.categories)),
+    ...new Set([
+      ...extraCategories,
+      ...cards.flatMap((card) => card.categories),
+    ]),
   ].sort((a, b) => a.localeCompare(b, 'ru'))
   return (
     <label className='field'>

@@ -5,11 +5,15 @@ export function CardForm({
   card,
   categories,
   save,
+  disabled,
+  saving,
   cancel,
 }: {
   card?: Card
   categories: string[]
   save: (card: Card) => Promise<boolean>
+  disabled: boolean
+  saving: boolean
   cancel: () => void
 }) {
   const [tags, setTags] = useState(card?.categories ?? [])
@@ -25,6 +29,7 @@ export function CardForm({
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (disabled) return
     const form = event.currentTarget
     const data = new FormData(form)
     const phrase = String(data.get('phrase')).trim()
@@ -53,12 +58,13 @@ export function CardForm({
     }
   }
   return (
-    <form className='panel' onSubmit={submit}>
+    <form className='panel' onSubmit={submit} aria-busy={saving}>
       <h2>{card ? 'Изменить карточку' : 'Добавить карточку'}</h2>
       <label className='field'>
         Слово или фраза
         <input
           name='phrase'
+          disabled={disabled}
           lang='pt-BR'
           required
           defaultValue={card?.phrase}
@@ -69,12 +75,13 @@ export function CardForm({
         Перевод
         <input
           name='translation'
+          disabled={disabled}
           required
           defaultValue={card?.translation}
           onInput={(e) => e.currentTarget.setCustomValidity('')}
         />
       </label>
-      <fieldset>
+      <fieldset disabled={disabled}>
         <legend>Категории</legend>
         <div className='tags'>
           {tags.map((tag) => (
@@ -115,11 +122,11 @@ export function CardForm({
         </div>
       </fieldset>
       <div className='actions'>
-        <button className='primary' type='submit'>
-          Сохранить
+        <button className='primary' type='submit' disabled={disabled}>
+          {saving ? 'Сохраняем…' : 'Сохранить'}
         </button>
         {card && (
-          <button type='button' onClick={cancel}>
+          <button type='button' disabled={disabled} onClick={cancel}>
             Отмена
           </button>
         )}

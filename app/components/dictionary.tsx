@@ -11,6 +11,9 @@ type Props = {
   categories: string[]
   changeCategory: (category: string) => void
   play: (phrase: string) => void
+  disabled: boolean
+  saving: boolean
+  deleting?: string
   save: (card: Card) => Promise<boolean>
   cancel: () => void
   edit: (id: string) => void
@@ -24,6 +27,9 @@ export function Dictionary({
   categories,
   changeCategory,
   play,
+  disabled,
+  saving,
+  deleting,
   save,
   cancel,
   edit,
@@ -40,11 +46,14 @@ export function Dictionary({
         card={edited}
         categories={categories}
         save={save}
+        disabled={disabled}
+        saving={saving}
         cancel={cancel}
       />
       {cards.length ? (
         <CategoryFilter
           cards={cards}
+          extraCategories={categories}
           value={category}
           change={changeCategory}
         />
@@ -60,8 +69,12 @@ export function Dictionary({
             <button onClick={() => play(card.phrase)}>
               <SoundIcon />
             </button>
-            <button onClick={() => edit(card.id)}>Изменить</button>
-            <button onClick={() => remove(card.id)}>Удалить</button>
+            <button disabled={disabled} onClick={() => edit(card.id)}>
+              Изменить
+            </button>
+            <button disabled={disabled} onClick={() => remove(card.id)}>
+              {deleting === card.id ? 'Удаляем…' : 'Удалить'}
+            </button>
           </div>
         </article>
       ))}

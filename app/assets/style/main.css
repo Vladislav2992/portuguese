@@ -162,6 +162,28 @@ main {
   gap: 1rem;
 }
 
+.deck-controls {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.deck-controls button {
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.65rem;
+}
+
+.deck-controls button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .save-btn.saved svg path {
   fill: var(--ink);
 }

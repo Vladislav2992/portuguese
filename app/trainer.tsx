@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Script from 'next/script'
-import audioFiles from './audio-files.json'
 import { CategoryFilter } from './components/category-filter'
 import { Flashcard } from './components/flashcard'
 import { Builder } from './components/phrase-builder'
@@ -15,7 +14,10 @@ import {
   type Action,
   type Profile,
 } from './profile-client'
-import type { Card, Mode, Reviews, View } from './types'
+import { scheduleLearned } from './learning'
+import { mixedBatchSize, mixedDeckLimit, type Collection } from './deck-types'
+import { useDeckPage } from './use-deck-page'
+import type { Card, Mode, Review, Reviews, View } from './types'
 import { ArrowIcon, BookmarkIcon } from './icons'
 
 const modes: [Mode, string][] = [
@@ -23,7 +25,6 @@ const modes: [Mode, string][] = [
   ['reply', 'Ответь на услышанное'],
   ['recall', 'Вспомни по переводу'],
 ]
-const audioByText = new Map(Object.entries(audioFiles))
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -33,9 +34,11 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-export default function Trainer({ starter }: { starter: Card[] }) {
+export default function Trainer() {
   const [view, setView] = useState<View>('cards')
   const [mode, setMode] = useState<Mode>('ask')
+  const [deck, setDeck] = useState<'mixed' | 'archive' | 'review'>('mixed')
+  const [now, setNow] = useState(0)
   const [category, setCategory] = useState('')
   const [index, setIndex] = useState(0)
   const [round, setRound] = useState(0)
@@ -43,6 +46,10 @@ export default function Trainer({ starter }: { starter: Card[] }) {
   const [reviews, setReviews] = useState<Reviews>({})
   const [editing, setEditing] = useState<string>()
   const [status, setStatus] = useState('')
+  const [pending, setPending] = useState<{
+    type: Action['type']
+    id?: string
+  } | null>(null)
   const [profile, setProfile] = useState<'loading' | 'guest' | 'remote'>(
     'loading',
   )
@@ -55,6 +62,24 @@ export default function Trainer({ starter }: { starter: Card[] }) {
   const initData = useRef('')
   const writing = useRef(false)
   const activeAudio = useRef<HTMLAudioElement | null>(null)
+  useEffect(() => {
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const collection: Collection =
+    view === 'cards' ? deck : view === 'build' ? 'builder' : view
+  const batch = useDeckPage({
+    collection,
+    category,
+    mode,
+    profile,
+    initData: profile === 'remote' ? (telegramLaunch ?? '') : '',
+    saved,
+    reviews,
+  })
+
   useEffect(() => {
     if (telegramLaunch === null) return
     let active = true
@@ -69,7 +94,7 @@ export default function Trainer({ starter }: { starter: Card[] }) {
       setReviews(local.reviews)
       setProfile('guest')
     }
-    profileRequest<Profile | { guest: true }>(initData.current, {
+    profileRequest<{ remote: true } | { guest: true }>(initData.current, {
       type: 'load',
     })
       .then((result) => {
@@ -78,8 +103,6 @@ export default function Trainer({ starter }: { starter: Card[] }) {
           openGuest()
           return
         }
-        setSaved(result.cards)
-        setReviews(result.reviews)
         setProfile('remote')
       })
       .catch(() => {
@@ -108,6 +131,15 @@ export default function Trainer({ starter }: { starter: Card[] }) {
   async function updateRemote(action: Action) {
     if (writing.current) return false
     writing.current = true
+    setPending({
+      type: action.type,
+      id:
+        'id' in action
+          ? action.id
+          : action.type === 'save'
+            ? action.card.id
+            : undefined,
+    })
     try {
       await profileRequest(initData.current, action)
       return true
@@ -116,6 +148,7 @@ export default function Trainer({ starter }: { starter: Card[] }) {
       return false
     } finally {
       writing.current = false
+      setPending(null)
     }
   }
 
@@ -130,7 +163,13 @@ export default function Trainer({ starter }: { starter: Card[] }) {
         : !persist('pt-dictionary', next)
     )
       return false
-    setSaved(next)
+    if (profile === 'guest') setSaved(next)
+    batch.setItems((items) =>
+      items.map((item) =>
+        item.card.id === card.id ? { ...item, card, saved: true } : item,
+      ),
+    )
+    if (view === 'dictionary') batch.refresh()
     setEditing(undefined)
     setStatus('Карточка сохранена.')
     return true
@@ -139,19 +178,20 @@ export default function Trainer({ starter }: { starter: Card[] }) {
   async function importLocal() {
     if (writing.current) return
     writing.current = true
+    setPending({ type: 'import' })
     try {
-      const result = await profileRequest<Profile>(initData.current, {
+      await profileRequest(initData.current, {
         type: 'import',
         ...localData,
       })
-      setSaved(result.cards)
-      setReviews(result.reviews)
+      batch.refresh()
       setLocalData({ cards: [], reviews: {} })
       setStatus('Данные с устройства добавлены в профиль.')
     } catch {
       setStatus('Не удалось импортировать данные с устройства.')
     } finally {
       writing.current = false
+      setPending(null)
     }
   }
   function play(text: string) {
@@ -160,8 +200,14 @@ export default function Trainer({ starter }: { starter: Card[] }) {
     activeAudio.current = null
     window.speechSynthesis?.cancel()
 
-    const filename = audioByText.get(text)
-    if (filename) {
+    const recording = batch.items.find(
+      ({ card }) => card.phrase === text || card.question === text,
+    )
+    const filename =
+      recording?.card.phrase === text
+        ? recording.audio
+        : recording?.questionAudio
+    if (filename && /^[a-f0-9]{16}\.mp3$/.test(filename)) {
       const audio = new Audio('/audio/' + filename)
       activeAudio.current = audio
       void audio.play().catch(() => {
@@ -198,50 +244,88 @@ export default function Trainer({ starter }: { starter: Card[] }) {
     setIndex(0)
     setRound((value) => value + 1)
   }
-  const builderExamples = starter.filter((card) => card.chunk && card.ending)
-  const combined = [
-    ...new Map([...starter, ...saved].map((card) => [card.id, card])).values(),
+  const cards = batch.items.map((item) => item.card)
+  const categories = [
+    ...new Set([
+      ...batch.categories,
+      ...saved.flatMap((card) => card.categories),
+    ]),
   ]
-  const source =
-    view === 'dictionary'
-      ? saved
-      : view === 'practice'
-        ? combined.filter(
-            (card) =>
-              mode === 'recall' ||
-              (card.prompt && Boolean(card.question) === (mode === 'reply')),
-          )
-        : starter
-  const filtered = source.filter(
-    (card) => !category || card.categories.includes(category),
-  )
   const due =
     view === 'practice'
-      ? filtered.filter((card) => (reviews[card.id]?.due ?? 0) <= Date.now())
+      ? batch.items.filter((item) => item.review.due <= now)
       : []
-  const pool = due.length ? due : filtered
-  const position = pool.length ? index % pool.length : 0
-  const current = pool[position]
-  const edited = saved.find((card) => card.id === editing)
-  async function rate(delay: number) {
-    if (!current || profile === 'loading') return
-    const next = { ...reviews, [current.id]: { due: Date.now() + delay } }
+  const pool = due.length ? due : batch.items
+  const position = Math.min(index, Math.max(0, pool.length - 1))
+  const mixed = collection === 'mixed'
+  const canAdd =
+    batch.more && batch.items.length + mixedBatchSize <= mixedDeckLimit
+  const currentItem = pool[position]
+  const current = currentItem?.card
+  const edited = cards.find((card) => card.id === editing)
+  const changesBlocked =
+    profile === 'loading' || pending !== null || batch.loading
+
+  async function nextBatch() {
+    if (!(await batch.next())) return
+    if (mixed) return
+    setIndex(0)
+    setEditing(undefined)
+    setRound((value) => value + 1)
+  }
+
+  async function saveReview(id: string, review: Review) {
+    if (changesBlocked) return false
+    const next = { ...reviews, [id]: review }
     if (
       profile === 'remote'
         ? !(await updateRemote({
             type: 'rate',
-            id: current.id,
-            due: next[current.id].due,
+            id,
+            ...review,
           }))
         : !persist('pt-reviews', next)
     )
+      return false
+    if (profile === 'guest') setReviews(next)
+    batch.setItems((items) =>
+      items.map((item) => (item.card.id === id ? { ...item, review } : item)),
+    )
+    setNow(Date.now())
+    return true
+  }
+
+  async function rate(delay: number) {
+    if (
+      !current ||
+      !(await saveReview(current.id, { due: Date.now() + delay }))
+    )
       return
-    setReviews(next)
     setIndex(position + (delay === 0 || due.length === 0 ? 1 : 0))
     setRound((value) => value + 1)
     setStatus(
       delay === 0 ? 'Карточка осталась в очереди.' : 'Отметка сохранена.',
     )
+  }
+
+  async function markCard(review: Review, message: string) {
+    if (!current || !(await saveReview(current.id, review))) return
+    if (
+      currentItem.review.state === 'learned' &&
+      currentItem.review.due <= Date.now()
+    ) {
+      batch.setDueCount((count) => Math.max(0, count - 1))
+    }
+    batch.setItems((items) =>
+      items.filter((item) => item.card.id !== current.id),
+    )
+    setIndex((index) =>
+      index > position
+        ? index - 1
+        : Math.min(index, Math.max(0, pool.length - 2)),
+    )
+    setRound((value) => value + 1)
+    setStatus(message)
   }
 
   return (
@@ -255,6 +339,9 @@ export default function Trainer({ starter }: { starter: Card[] }) {
       <TrainerHeader
         view={view}
         onChange={(nextView) => {
+          if (nextView === 'cards' && view !== 'cards') {
+            setDeck('mixed')
+          }
           setView(nextView)
           changeCategory('')
           setEditing(undefined)
@@ -263,14 +350,67 @@ export default function Trainer({ starter }: { starter: Card[] }) {
       />
       <main>
         <p className='status' role='status'>
-          {status || (profile === 'loading' ? 'Загружаем профиль…' : '')}
+          {pending?.type === 'remove'
+            ? 'Удаляем карточку…'
+            : pending
+              ? 'Сохраняем…'
+              : status || (profile === 'loading' ? 'Загружаем профиль…' : '')}
         </p>
         {profileNotice && <p className='muted'>{profileNotice}</p>}
+        {view === 'cards' && (
+          <div className='actions deck-controls' aria-label='Подборки карточек'>
+            {(
+              [
+                ['mixed', 'Учить'],
+                ['review', 'Повторить · ' + batch.dueCount],
+                ['archive', 'Выученные и скрытые'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type='button'
+                aria-pressed={deck === id}
+                onClick={() => {
+                  setDeck(id)
+                  changeCategory('')
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {mixed && (batch.items.length > 0 || batch.more) && (
+          <div className='actions deck-controls'>
+            <span>
+              В подборке {batch.items.length} из {mixedDeckLimit}
+            </span>
+            {canAdd && !batch.failed && (
+              <button
+                type='button'
+                disabled={changesBlocked}
+                onClick={nextBatch}
+              >
+                {batch.loading ? 'Добавляем…' : 'Добавить ' + mixedBatchSize}
+              </button>
+            )}
+            {batch.more && !canAdd && (
+              <span>
+                Для новой порции нужны свободные места (ещё{' '}
+                {batch.items.length + mixedBatchSize - mixedDeckLimit}).
+              </span>
+            )}
+            {!batch.more && !batch.loading && (
+              <span>Все карточки загружены.</span>
+            )}
+          </div>
+        )}
         {view === 'build' &&
-          (builderExamples.length ? (
-            <Builder examples={builderExamples} play={play} />
+          (cards.length ? (
+            <Builder key={cards[0].id} examples={cards} play={play} />
           ) : (
-            <p>Пока нет фраз с подстановкой.</p>
+            !batch.loading &&
+            !batch.failed && <p>Пока нет фраз с подстановкой.</p>
           ))}
         {(view === 'cards' || view === 'practice') && (
           <>
@@ -293,11 +433,12 @@ export default function Trainer({ starter }: { starter: Card[] }) {
               </label>
             )}
             <CategoryFilter
-              cards={source}
+              cards={[]}
+              extraCategories={categories}
               value={category}
               change={changeCategory}
             />
-            {view === 'practice' && (
+            {view === 'practice' && !batch.loading && !batch.failed && (
               <p className='muted'>
                 {due.length
                   ? 'К повторению: ' + due.length
@@ -323,14 +464,24 @@ export default function Trainer({ starter }: { starter: Card[] }) {
                     play={play}
                   >
                     <button
-                      disabled={
-                        profile === 'loading' ||
-                        saved.some((item) => item.id === current.id)
+                      disabled={changesBlocked || currentItem.saved}
+                      className={`save-btn ${currentItem.saved ? 'saved' : ''}`}
+                      aria-label='Сохранить карточку в словарик'
+                      onClick={() =>
+                        save({
+                          ...current,
+                          ...(profile === 'guest' && {
+                            audio: currentItem.audio,
+                            questionAudio: currentItem.questionAudio,
+                          }),
+                        })
                       }
-                      className={`save-btn ${saved.some((item) => item.id === current.id) ? 'saved' : ''}`}
-                      onClick={() => save(current)}
                     >
-                      <BookmarkIcon />
+                      {pending?.type === 'save' && pending.id === current.id ? (
+                        'Сохраняем…'
+                      ) : (
+                        <BookmarkIcon />
+                      )}
                     </button>
                   </Flashcard>
                 ) : (
@@ -340,12 +491,94 @@ export default function Trainer({ starter }: { starter: Card[] }) {
                     mode={mode}
                     play={play}
                     rate={rate}
+                    disabled={changesBlocked}
                   />
+                )}
+                {view === 'cards' && (
+                  <div className='actions deck-controls'>
+                    {deck === 'mixed' && currentItem.lane !== 'review' && (
+                      <>
+                        <button
+                          disabled={changesBlocked}
+                          onClick={() =>
+                            markCard(
+                              scheduleLearned(Date.now()),
+                              'Карточка выучена. Первое повторение завтра.',
+                            )
+                          }
+                        >
+                          Выучил
+                        </button>
+                        <button
+                          disabled={changesBlocked}
+                          onClick={() =>
+                            markCard(
+                              { due: 0, state: 'hidden', stage: 0 },
+                              'Карточка скрыта.',
+                            )
+                          }
+                        >
+                          Скрыть
+                        </button>
+                      </>
+                    )}
+                    {deck === 'archive' && (
+                      <>
+                        <span>
+                          {currentItem.review.state === 'hidden'
+                            ? 'Скрыта'
+                            : 'Выучена'}
+                        </span>
+                        <button
+                          disabled={changesBlocked}
+                          onClick={() =>
+                            markCard(
+                              { due: 0, state: 'active', stage: 0 },
+                              'Карточка возвращена в обучение.',
+                            )
+                          }
+                        >
+                          Вернуть в обучение
+                        </button>
+                      </>
+                    )}
+                    {(deck === 'review' || currentItem.lane === 'review') && (
+                      <>
+                        <button
+                          disabled={changesBlocked}
+                          onClick={() =>
+                            markCard(
+                              scheduleLearned(
+                                Date.now(),
+                                currentItem.review,
+                                true,
+                              ),
+                              'Следующее повторение запланировано.',
+                            )
+                          }
+                        >
+                          Вспомнил
+                        </button>
+                        <button
+                          disabled={changesBlocked}
+                          onClick={() =>
+                            markCard(
+                              scheduleLearned(Date.now()),
+                              'Карточка вернётся завтра.',
+                            )
+                          }
+                        >
+                          Повторить завтра
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
                 <div className='actions navigation'>
                   <button
                     className='rotate-180'
-                    disabled={pool.length < 2}
+                    aria-label='Назад'
+                    disabled={!mixed && (batch.loading || position === 0)}
                     onClick={() => {
                       setIndex((position - 1 + pool.length) % pool.length)
                       setRound(round + 1)
@@ -355,7 +588,10 @@ export default function Trainer({ starter }: { starter: Card[] }) {
                   </button>
                   <button
                     className='primary'
-                    disabled={pool.length < 2}
+                    aria-label='Дальше'
+                    disabled={
+                      !mixed && (batch.loading || position >= pool.length - 1)
+                    }
                     onClick={() => {
                       setIndex((position + 1) % pool.length)
                       setRound(round + 1)
@@ -366,7 +602,14 @@ export default function Trainer({ starter }: { starter: Card[] }) {
                 </div>
               </>
             ) : (
-              <p>В этой категории пока нет карточек.</p>
+              !batch.loading &&
+              !batch.failed && (
+                <p>
+                  {view === 'cards' && deck === 'review'
+                    ? 'На сегодня повторений нет.'
+                    : 'В этой категории пока нет карточек.'}
+                </p>
+              )
             )}
           </>
         )}
@@ -374,20 +617,25 @@ export default function Trainer({ starter }: { starter: Card[] }) {
           profile === 'remote' &&
           (localData.cards.length > 0 ||
             Object.keys(localData.reviews).length > 0) && (
-            <button type='button' onClick={importLocal}>
+            <button
+              type='button'
+              disabled={changesBlocked}
+              onClick={importLocal}
+            >
               Импортировать словарик и прогресс с устройства
             </button>
           )}
         {view === 'dictionary' && profile !== 'loading' && (
           <Dictionary
-            cards={saved}
+            cards={cards}
             edited={edited}
             category={category}
-            categories={[
-              ...new Set(combined.flatMap((card) => card.categories)),
-            ]}
+            categories={categories}
             changeCategory={changeCategory}
             play={play}
+            disabled={changesBlocked}
+            saving={pending?.type === 'save'}
+            deleting={pending?.type === 'remove' ? pending.id : undefined}
             save={async (card) => {
               if (!(await save(card))) return false
               setCategory('')
@@ -406,13 +654,44 @@ export default function Trainer({ starter }: { starter: Card[] }) {
                   : !persist('pt-dictionary', next)
               )
                 return
-              setSaved(next)
+              if (profile === 'guest') setSaved(next)
+              batch.setItems((items) =>
+                items.filter((item) => item.card.id !== id),
+              )
               if (editing === id) setEditing(undefined)
-              setCategory('')
               setStatus('Карточка удалена из словарика.')
             }}
           />
         )}
+        {batch.loading &&
+          profile !== 'loading' &&
+          !(mixed && batch.items.length) && (
+            <p role='status'>Загружаем карточки…</p>
+          )}
+        {batch.failed && (
+          <div role='alert'>
+            <p>{batch.failed}</p>
+            <button type='button' disabled={changesBlocked} onClick={nextBatch}>
+              Попробовать ещё раз
+            </button>
+          </div>
+        )}
+        {!mixed &&
+          batch.more &&
+          !batch.failed &&
+          (view === 'build' ||
+            view === 'dictionary' ||
+            position >= pool.length - 1) && (
+            <div className='actions deck-controls'>
+              <button
+                type='button'
+                disabled={changesBlocked}
+                onClick={nextBatch}
+              >
+                Следующие 30
+              </button>
+            </div>
+          )}
       </main>
     </div>
   )

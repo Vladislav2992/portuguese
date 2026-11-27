@@ -1,6 +1,7 @@
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
-import type { Card, Reviews } from '../../types'
-import { telegramUser } from './telegram'
+import { neon } from '@neondatabase/serverless'
+import type { Card, Review } from '../../types'
+import { profileOwner } from './owner'
+import { readAction } from '../read-action'
 
 const headers = { 'Cache-Control': 'no-store' }
 
@@ -14,6 +15,17 @@ function isId(value: unknown): value is string {
 
 function isDue(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isReview(value: unknown): value is Review {
+  if (!value || typeof value !== 'object') return false
+  const { due, state, stage } = value as Partial<Review>
+  return (
+    isDue(due) &&
+    (state === undefined || ['active', 'learned', 'hidden'].includes(state)) &&
+    (stage === undefined ||
+      (Number.isInteger(stage) && stage >= 0 && stage <= 3))
+  )
 }
 
 function isCard(value: unknown): value is Card {
@@ -36,55 +48,20 @@ function isCard(value: unknown): value is Card {
   )
 }
 
-async function profile(sql: NeonQueryFunction<false, false>, user: string) {
-  const [cards, reviews] = await sql.transaction([
-    sql`SELECT card FROM personal_cards WHERE owner_id = ${user} ORDER BY created_at, card_id`,
-    sql`SELECT card_id, due FROM personal_reviews WHERE owner_id = ${user}`,
-  ])
-  return {
-    cards: cards.map((row) => row.card as Card),
-    reviews: Object.fromEntries(
-      reviews.map((row) => [row.card_id, { due: Number(row.due) }]),
-    ) as Reviews,
-  }
-}
-
 export async function POST(request: Request) {
-  const initData = request.headers.get('x-telegram-init-data')
-  const user = initData
-    ? telegramUser(initData, process.env.TELEGRAM_BOT_TOKEN ?? '')
-    : null
-  const localDevelopment =
-    !initData &&
-    process.env.NODE_ENV === 'development' &&
-    process.env.TELEGRAM_DEV_PROFILE === '1' &&
-    ['localhost', '127.0.0.1'].includes(new URL(request.url).hostname)
-  const owner = user
-    ? 'telegram:' + user
-    : localDevelopment
-      ? 'development'
-      : null
-  if (!owner)
-    return reply(
-      initData ? { error: 'Unauthorized' } : { guest: true },
-      initData ? 401 : 200,
-    )
+  const owner = profileOwner(request)
+  if (owner === undefined) return reply({ error: 'Unauthorized' }, 401)
+  if (!owner) return reply({ guest: true })
   const url = process.env.DATABASE_URL
   if (!url) return reply({ error: 'Database unavailable' }, 503)
 
   try {
-    const raw = await request.text()
-    if (raw.length > 256000) return reply({ error: 'Request too large' }, 413)
-    let action
-    try {
-      action = JSON.parse(raw)
-    } catch {
-      return reply({ error: 'Invalid request' }, 400)
-    }
+    const action = await readAction(request)
+    if (action instanceof Response) return action
     const sql = neon(url)
     switch (action?.type) {
       case 'load':
-        return reply(await profile(sql, owner))
+        return reply({ remote: true })
       case 'save':
         if (isCard(action.card)) {
           await sql`INSERT INTO personal_cards (owner_id, card_id, card)
@@ -99,14 +76,19 @@ export async function POST(request: Request) {
           return reply({ ok: true })
         }
         break
-      case 'rate':
-        if (isId(action.id) && isDue(action.due)) {
-          await sql`INSERT INTO personal_reviews (owner_id, card_id, due)
-            VALUES (${owner}, ${action.id}, ${action.due})
-            ON CONFLICT (owner_id, card_id) DO UPDATE SET due = excluded.due`
+      case 'rate': {
+        const id = action.id
+        if (isId(id) && isReview(action)) {
+          await sql`INSERT INTO personal_reviews (owner_id, card_id, due, learning_state, review_stage)
+            VALUES (${owner}, ${id}, ${action.due}, ${action.state ?? 'active'}, ${action.stage ?? 0})
+            ON CONFLICT (owner_id, card_id) DO UPDATE SET
+              due = excluded.due,
+              learning_state = COALESCE(${action.state ?? null}, personal_reviews.learning_state),
+              review_stage = COALESCE(${action.stage ?? null}::smallint, personal_reviews.review_stage)`
           return reply({ ok: true })
         }
         break
+      }
       case 'import': {
         const { cards, reviews } = action
         if (
@@ -118,22 +100,19 @@ export async function POST(request: Request) {
         )
           break
         const entries = Object.entries(reviews)
-        if (
-          !entries.every(
-            ([id, review]) =>
-              isId(id) && isDue((review as { due?: unknown } | null)?.due),
-          )
-        )
+        if (!entries.every(([id, review]) => isId(id) && isReview(review)))
           break
         await sql.transaction([
           sql`INSERT INTO personal_cards (owner_id, card_id, card)
             SELECT ${owner}, entry->>'id', entry FROM jsonb_array_elements(${JSON.stringify(cards)}::jsonb) AS entry
             ON CONFLICT (owner_id, card_id) DO NOTHING`,
-          sql`INSERT INTO personal_reviews (owner_id, card_id, due)
-            SELECT ${owner}, id, (entry->>'due')::bigint FROM jsonb_each(${JSON.stringify(reviews)}::jsonb) AS review(id, entry)
+          sql`INSERT INTO personal_reviews (owner_id, card_id, due, learning_state, review_stage)
+            SELECT ${owner}, id, (entry->>'due')::bigint, COALESCE(entry->>'state', 'active'),
+              COALESCE((entry->>'stage')::smallint, 0)
+            FROM jsonb_each(${JSON.stringify(reviews)}::jsonb) AS review(id, entry)
             ON CONFLICT (owner_id, card_id) DO NOTHING`,
         ])
-        return reply(await profile(sql, owner))
+        return reply({ ok: true })
       }
     }
     return reply({ error: 'Invalid request' }, 400)
