@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import '@fontsource-variable/inter'
-import './assets/style/main.sass'
+import './assets/style/main.css'
 
 export const metadata: Metadata = {
   title: 'Португальский для Бразилии',

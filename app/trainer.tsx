@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Script from 'next/script'
 import audioFiles from './audio-files.json'
 import { CategoryFilter } from './components/category-filter'
 import { Flashcard } from './components/flashcard'
@@ -8,6 +9,12 @@ import { Builder } from './components/phrase-builder'
 import { PracticeCard } from './components/practice-card'
 import { Dictionary } from './components/dictionary'
 import { TrainerHeader } from './components/trainer-header'
+import {
+  profileRequest,
+  telegramInitData,
+  type Action,
+  type Profile,
+} from './profile-client'
 import type { Card, Mode, Reviews, View } from './types'
 import { ArrowIcon, BookmarkIcon } from './icons'
 
@@ -36,12 +43,58 @@ export default function Trainer({ starter }: { starter: Card[] }) {
   const [reviews, setReviews] = useState<Reviews>({})
   const [editing, setEditing] = useState<string>()
   const [status, setStatus] = useState('')
+  const [profile, setProfile] = useState<'loading' | 'guest' | 'remote'>(
+    'loading',
+  )
+  const [profileNotice, setProfileNotice] = useState('')
+  const [telegramLaunch, setTelegramLaunch] = useState<string | null>(null)
+  const [localData, setLocalData] = useState<Profile>({
+    cards: [],
+    reviews: {},
+  })
+  const initData = useRef('')
+  const writing = useRef(false)
   const activeAudio = useRef<HTMLAudioElement | null>(null)
   useEffect(() => {
-    setSaved(read('pt-dictionary', []))
-    setReviews(read('pt-reviews', {}))
-    return () => activeAudio.current?.pause()
-  }, [])
+    if (telegramLaunch === null) return
+    let active = true
+    const local = {
+      cards: read<Card[]>('pt-dictionary', []),
+      reviews: read<Reviews>('pt-reviews', {}),
+    }
+    setLocalData(local)
+    initData.current = telegramLaunch
+    function openGuest() {
+      setSaved(local.cards)
+      setReviews(local.reviews)
+      setProfile('guest')
+    }
+    profileRequest<Profile | { guest: true }>(initData.current, {
+      type: 'load',
+    })
+      .then((result) => {
+        if (!active) return
+        if ('guest' in result) {
+          openGuest()
+          return
+        }
+        setSaved(result.cards)
+        setReviews(result.reviews)
+        setProfile('remote')
+      })
+      .catch(() => {
+        if (!active) return
+        openGuest()
+        if (initData.current)
+          setProfileNotice(
+            'Профиль Telegram недоступен. Изменения сохраняются на этом устройстве.',
+          )
+      })
+    return () => {
+      active = false
+      activeAudio.current?.pause()
+    }
+  }, [telegramLaunch])
 
   function persist(key: string, value: unknown) {
     try {
@@ -52,15 +105,54 @@ export default function Trainer({ starter }: { starter: Card[] }) {
       return false
     }
   }
-  function save(card: Card) {
+  async function updateRemote(action: Action) {
+    if (writing.current) return false
+    writing.current = true
+    try {
+      await profileRequest(initData.current, action)
+      return true
+    } catch {
+      setStatus('Не удалось сохранить изменения в профиле. Попробуй ещё раз.')
+      return false
+    } finally {
+      writing.current = false
+    }
+  }
+
+  async function save(card: Card) {
+    if (profile === 'loading') return false
     const next = saved.some((item) => item.id === card.id)
       ? saved.map((item) => (item.id === card.id ? card : item))
       : [...saved, card]
-    if (!persist('pt-dictionary', next)) return false
+    if (
+      profile === 'remote'
+        ? !(await updateRemote({ type: 'save', card }))
+        : !persist('pt-dictionary', next)
+    )
+      return false
     setSaved(next)
     setEditing(undefined)
     setStatus('Карточка сохранена.')
     return true
+  }
+
+  async function importLocal() {
+    if (writing.current) return
+    writing.current = true
+    try {
+      const result = await profileRequest<Profile>(initData.current, {
+        type: 'import',
+        ...localData,
+      })
+      setSaved(result.cards)
+      setReviews(result.reviews)
+      setLocalData({ cards: [], reviews: {} })
+      setStatus('Данные с устройства добавлены в профиль.')
+    } catch {
+      setStatus('Не удалось импортировать данные с устройства.')
+    } finally {
+      writing.current = false
+    }
   }
   function play(text: string) {
     setStatus('')
@@ -131,10 +223,19 @@ export default function Trainer({ starter }: { starter: Card[] }) {
   const position = pool.length ? index % pool.length : 0
   const current = pool[position]
   const edited = saved.find((card) => card.id === editing)
-  function rate(delay: number) {
-    if (!current) return
+  async function rate(delay: number) {
+    if (!current || profile === 'loading') return
     const next = { ...reviews, [current.id]: { due: Date.now() + delay } }
-    if (!persist('pt-reviews', next)) return
+    if (
+      profile === 'remote'
+        ? !(await updateRemote({
+            type: 'rate',
+            id: current.id,
+            due: next[current.id].due,
+          }))
+        : !persist('pt-reviews', next)
+    )
+      return
     setReviews(next)
     setIndex(position + (delay === 0 || due.length === 0 ? 1 : 0))
     setRound((value) => value + 1)
@@ -145,6 +246,12 @@ export default function Trainer({ starter }: { starter: Card[] }) {
 
   return (
     <div className='shell'>
+      <Script
+        src='https://telegram.org/js/telegram-web-app.js?65'
+        strategy='afterInteractive'
+        onReady={() => setTelegramLaunch(telegramInitData())}
+        onError={() => setTelegramLaunch('')}
+      />
       <TrainerHeader
         view={view}
         onChange={(nextView) => {
@@ -156,8 +263,9 @@ export default function Trainer({ starter }: { starter: Card[] }) {
       />
       <main>
         <p className='status' role='status'>
-          {status}
+          {status || (profile === 'loading' ? 'Загружаем профиль…' : '')}
         </p>
+        {profileNotice && <p className='muted'>{profileNotice}</p>}
         {view === 'build' &&
           (builderExamples.length ? (
             <Builder examples={builderExamples} play={play} />
@@ -215,7 +323,10 @@ export default function Trainer({ starter }: { starter: Card[] }) {
                     play={play}
                   >
                     <button
-                      disabled={saved.some((item) => item.id === current.id)}
+                      disabled={
+                        profile === 'loading' ||
+                        saved.some((item) => item.id === current.id)
+                      }
                       className={`save-btn ${saved.some((item) => item.id === current.id) ? 'saved' : ''}`}
                       onClick={() => save(current)}
                     >
@@ -259,7 +370,15 @@ export default function Trainer({ starter }: { starter: Card[] }) {
             )}
           </>
         )}
-        {view === 'dictionary' && (
+        {view === 'dictionary' &&
+          profile === 'remote' &&
+          (localData.cards.length > 0 ||
+            Object.keys(localData.reviews).length > 0) && (
+            <button type='button' onClick={importLocal}>
+              Импортировать словарик и прогресс с устройства
+            </button>
+          )}
+        {view === 'dictionary' && profile !== 'loading' && (
           <Dictionary
             cards={saved}
             edited={edited}
@@ -269,8 +388,8 @@ export default function Trainer({ starter }: { starter: Card[] }) {
             ]}
             changeCategory={changeCategory}
             play={play}
-            save={(card) => {
-              if (!save(card)) return false
+            save={async (card) => {
+              if (!(await save(card))) return false
               setCategory('')
               return true
             }}
@@ -279,9 +398,14 @@ export default function Trainer({ starter }: { starter: Card[] }) {
               setEditing(id)
               window.scrollTo({ top: 0 })
             }}
-            remove={(id) => {
+            remove={async (id) => {
               const next = saved.filter((item) => item.id !== id)
-              if (!persist('pt-dictionary', next)) return
+              if (
+                profile === 'remote'
+                  ? !(await updateRemote({ type: 'remove', id }))
+                  : !persist('pt-dictionary', next)
+              )
+                return
               setSaved(next)
               if (editing === id) setEditing(undefined)
               setCategory('')

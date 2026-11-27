@@ -9,7 +9,7 @@ export function CardForm({
 }: {
   card?: Card
   categories: string[]
-  save: (card: Card) => boolean
+  save: (card: Card) => Promise<boolean>
   cancel: () => void
 }) {
   const [tags, setTags] = useState(card?.categories ?? [])
@@ -23,7 +23,7 @@ export function CardForm({
     setTags([...new Set([...tags, ...pending()])])
     setDraft('')
   }
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
     const data = new FormData(form)
@@ -39,7 +39,7 @@ export function CardForm({
     }
     const metadata = card && phrase === card.phrase ? card : {}
     if (
-      save({
+      await save({
         ...metadata,
         id: card?.id ?? crypto.randomUUID(),
         phrase,

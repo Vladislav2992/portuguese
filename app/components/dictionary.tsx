@@ -11,7 +11,7 @@ type Props = {
   categories: string[]
   changeCategory: (category: string) => void
   play: (phrase: string) => void
-  save: (card: Card) => boolean
+  save: (card: Card) => Promise<boolean>
   cancel: () => void
   edit: (id: string) => void
   remove: (id: string) => void
@@ -57,7 +57,9 @@ export function Dictionary({
           <p>{card.translation}</p>
           <Tags categories={card.categories} />
           <div className='actions'>
-            <button onClick={() => play(card.phrase)}><SoundIcon /></button>
+            <button onClick={() => play(card.phrase)}>
+              <SoundIcon />
+            </button>
             <button onClick={() => edit(card.id)}>Изменить</button>
             <button onClick={() => remove(card.id)}>Удалить</button>
           </div>
